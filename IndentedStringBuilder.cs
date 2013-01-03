@@ -3,14 +3,13 @@ using System.Text;
 
 namespace DTZ.Utilities
 {
-    public class IndentedStringBuilder : IDisposable
+    public class IndentedStringBuilder
     {
         private const int SpacesPerIndent = 2;
-
         private readonly StringBuilder _sb;
         private string _completeIndentationString = "";
         private int _indent;
-        bool _newline = true;
+        private bool _newline;
 
         public IndentedStringBuilder()
         {
@@ -24,7 +23,7 @@ namespace DTZ.Utilities
 
         public void Append(string value)
         {
-            var i = value.IndexOf("\r\n", StringComparison.Ordinal);
+            int i = value.IndexOf("\r\n", StringComparison.Ordinal);
             if (i < 0) // No newline
                 InternalAppend(value, false);
             else if (i == value.Length - 2) // Ends with newline
@@ -44,9 +43,15 @@ namespace DTZ.Utilities
             _newline = endsInCr;
         }
 
+        public void AppendLine()
+        {
+            Append(Environment.NewLine);
+        }
+
         public void AppendLine(string value)
         {
-            Append(value + Environment.NewLine);
+            Append(value);
+            AppendLine();
         }
 
         public void AppendFormat(string format, params object[] objects)
@@ -54,11 +59,11 @@ namespace DTZ.Utilities
             Append(string.Format(format, objects));
         }
 
-        public IndentedStringBuilder IncreaseIndent()
+        public DecreaseIndentOnDispose IncreaseIndent()
         {
             _indent++;
-            _completeIndentationString = new string(' ', SpacesPerIndent * _indent);
-            return this;
+            _completeIndentationString = new string(' ', SpacesPerIndent*_indent);
+            return new DecreaseIndentOnDispose(this);
         }
 
         public void DecreaseIndent()
@@ -68,14 +73,25 @@ namespace DTZ.Utilities
             _completeIndentationString = new string(' ', SpacesPerIndent*_indent);
         }
 
-        public void Dispose()
-        {
-            DecreaseIndent();
-        }
 
         public override string ToString()
         {
             return _sb.ToString();
+        }
+    }
+
+    public class DecreaseIndentOnDispose : IDisposable
+    {
+        private readonly IndentedStringBuilder _indentedStringBuilder;
+
+        public DecreaseIndentOnDispose(IndentedStringBuilder indentedStringBuilder)
+        {
+            _indentedStringBuilder = indentedStringBuilder;
+        }
+
+        public void Dispose()
+        {
+            _indentedStringBuilder.DecreaseIndent();
         }
     }
 }
